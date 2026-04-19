@@ -52,10 +52,16 @@ install-symfony: build-app
 	@echo "Symfony CLI is installed inside the PHP container."
 	@docker run --rm ${APP_IMAGE} symfony version
 
-build-app:: up symfony-install web-server-run
+build-app:: up composer-install run-migrations symfony-install web-server-run
 
 up:
 	docker compose -f docker-compose.yaml up -d
+
+composer-install:
+	docker compose exec -u root -i php composer install --no-scripts
+
+run-migrations:
+	docker compose exec -u root -i php php bin/console doctrine:migrations:migrate
 
 symfony-install:
 	docker compose exec -u root -i php sh /app/install_symfony.sh
@@ -70,4 +76,4 @@ check-code-quality:
 	docker compose exec -i php sh -c "./vendor/bin/php-cs-fixer fix --allow-risky=yes && ./vendor/bin/phpstan analyse -l 6 src tests"
 
 run-tests:
-	docker compose exec -i php sh -c "php bin/console --env=test doctrine:fixtures:load && php bin/phpunit"
+	docker compose exec -i php sh -c "php bin/console --env=test doctrine:migrations:migrate && php bin/console --env=test doctrine:fixtures:load && php bin/phpunit"
