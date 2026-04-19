@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+    php:
+        container_name: asgoodasnew_php
+        build:
+          dockerfile: docker/php/Dockerfile
+          context: .
+          target: php_base
+        expose:
+          - "${PHP_FPM_EXPOSE_PORT}"
+        ports:
+          - "${APP_PORT}:8000"
+        environment:
+          PHP_IDE_CONFIG: serverName=asgoodasnew
+          XDEBUG_CONFIG: client_host=${REMOTE_HOST}
+        user: "${UID:?UID env not set}:${GID:?UID env not set}"
+        volumes:
+            - ./app/:/app
+            - "${PWD}/docker/php/php.ini:/usr/local/etc/php/php.ini"
+        working_dir: /app
+        tmpfs: /tmp/app
+        extra_hosts:
+          - "host.docker.internal:host-gateway"
+        networks:
+          - appnet
+    mysql:
+      container_name: asgoodasnew_mysql
+      build:
+        dockerfile: Dockerfile
+        context: ./docker/mysql
+      volumes:
+          - mysql_data:/var/lib/mysql
+          - ./docker/mysql/initdb.d:/docker-entrypoint-initdb.d
+      ports: ["${MYSQL_PORT}:3306"]
+      environment:
+          MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+          MYSQL_DATABASE: ${MYSQL_DATABASE}
+          MYSQL_USER: ${MYSQL_USER}
+          MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      networks:
+        - appnet
+    mysql_test:
+      container_name: asgoodasnew_mysql_test
+      build:
+        dockerfile: Dockerfile
+        context: ./docker/mysql
+      volumes:
+        - mysql_test_data:/var/lib/mysql
+        - ./docker/mysql/initdb2.d:/docker-entrypoint-initdb.d
+      ports: [ "${MYSQL_TEST_PORT}:3306" ]
+      environment:
+        MYSQL_ROOT_PASSWORD: ${MYSQL_TEST_ROOT_PASSWORD}
+        MYSQL_DATABASE: ${MYSQL_TEST_DATABASE}
+        MYSQL_USER: ${MYSQL_TEST_USER}
+        MYSQL_PASSWORD: ${MYSQL_TEST_PASSWORD}
+      networks:
+        - appnet
+
+networks:
+  appnet:
+    driver: "bridge"
+
+
+volumes:
+  mysql_data:
+    driver: local
+  mysql_test_data:
+    driver: local
+
+

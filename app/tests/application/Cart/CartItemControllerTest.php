@@ -137,6 +137,39 @@ class CartItemControllerTest extends WebTestCase
         $this->assertArrayHasKey('errorMessage', $responseData);
     }
 
+    public function testAddCartItemCountDoesntExist(): void
+    {
+        $client = static::createClient();
+
+        $content = json_encode(['userId' => 1, 'itemId' => 5]);
+
+        $client->request(
+            method: 'POST',
+            uri: '/cartItem',
+            content: $content ?: null,
+            server: self::AUTH_HEADERS,
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+    }
+
+    public function testAddCartItemCountLessThanOne(): void
+    {
+        $client = static::createClient();
+
+        $content = json_encode(['userId' => 1, 'itemId' => 5, 'count' => 0]);
+
+        $client->request(
+            method: 'POST',
+            uri: '/cartItem',
+            content: $content ?: null,
+            server: self::AUTH_HEADERS,
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+    }
+
+
     // --- remove() ---
 
     public function testRemoveCartItemSuccessfully(): void
@@ -248,11 +281,27 @@ class CartItemControllerTest extends WebTestCase
         $this->assertArrayHasKey('errorMessage', $responseData);
     }
 
-    public function testChangeCartItemWrongCount(): void
+    public function testChangeCartItemNoCount(): void
     {
         $client = static::createClient();
 
         $content = json_encode(['someOtherField' => 'value']);
+
+        $client->request(
+            method: 'PUT',
+            uri: '/cartItem/42',
+            content: $content ?: null,
+            server: self::AUTH_HEADERS,
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+    }
+
+    public function testChangeCartItemCountIsLessThanOne(): void
+    {
+        $client = static::createClient();
+
+        $content = json_encode(['count' => 0]);
 
         $client->request(
             method: 'PUT',

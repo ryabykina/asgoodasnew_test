@@ -41,6 +41,10 @@ class CartItemController
             return new JsonResponse(['errorMessage' => 'Ihe count parameter is required'], Response::HTTP_BAD_REQUEST);
         }
 
+        if ($count <= 0) {
+            return new JsonResponse(['errorMessage' => 'Ihe count must be more than 0'], Response::HTTP_BAD_REQUEST);
+        }
+
         try {
             $cartDTO = $this->cartManager->saveCartItem((int) $userId, (int) $itemId, (int) $count);
 
@@ -70,6 +74,10 @@ class CartItemController
 
         if (null === $count) {
             return new JsonResponse(['errorMessage' => 'The count parameter is required'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($count <= 0) {
+            return new JsonResponse(['errorMessage' => 'Ihe count must be more than 0'], Response::HTTP_BAD_REQUEST);
         }
 
         try {
