@@ -9,6 +9,7 @@ use App\DTO\Cart\CartItemDTO;
 use App\Service\Cart\CartManagerInterface;
 use App\Service\Cart\Exception\CartItemNotFoundException;
 use App\Service\Cart\Exception\ItemByUserExistsException;
+use App\Service\Cart\Exception\ItemsAmountLimitReachedException;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,12 +31,13 @@ class CartItemControllerTest extends WebTestCase
         return $cartDTO;
     }
 
-    private function buildCartItemDTO(int $cartItemId, int $itemId, int $count): CartItemDTO
+    private function buildCartItemDTO(int $cartItemId, int $itemId, int $count, int $userId = 0): CartItemDTO
     {
         $cartItemDTO = new CartItemDTO();
         $cartItemDTO->id = $cartItemId;
         $cartItemDTO->itemId = $itemId;
         $cartItemDTO->count = $count;
+        $cartItemDTO->userId = $userId;
 
         return $cartItemDTO;
     }
@@ -46,14 +48,14 @@ class CartItemControllerTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $cartDTO = $this->buildCartDTO(userId: 1, cartItemId: 10, itemId: 5, count: 3);
+        $cartItemDTO = $this->buildCartItemDTO(cartItemId: 10, itemId: 5, count: 3, userId: 1);
 
         $mockCartManager = $this->createMock(CartManagerInterface::class);
         $mockCartManager
             ->expects($this->once())
             ->method('saveCartItem')
             ->with(1, 5, 3)
-            ->willReturn($cartDTO);
+            ->willReturn($cartItemDTO);
 
         static::getContainer()->set(CartManagerInterface::class, $mockCartManager);
 
@@ -70,9 +72,8 @@ class CartItemControllerTest extends WebTestCase
 
         $responseData = json_decode((string) $client->getResponse()->getContent(), true);
         $this->assertSame(1, $responseData['userId']);
-        $this->assertCount(1, $responseData['items']);
-        $this->assertSame(5, $responseData['items'][0]['itemId']);
-        $this->assertSame(3, $responseData['items'][0]['count']);
+        $this->assertSame(5, $responseData['itemId']);
+        $this->assertSame(3, $responseData['count']);
     }
 
     public function testAddCartItemUserIdDoesntExist(): void
@@ -169,6 +170,33 @@ class CartItemControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
     }
 
+    public function testAddCartItemItemsLimitReached(): void
+    {
+        $client = static::createClient();
+
+        $mockCartManager = $this->createMock(CartManagerInterface::class);
+        $mockCartManager
+            ->expects($this->once())
+            ->method('saveCartItem')
+            ->with(1, 5, 3)
+            ->willThrowException(new ItemsAmountLimitReachedException('The items amount limit has been reached for the userId = 1'));
+
+        static::getContainer()->set(CartManagerInterface::class, $mockCartManager);
+
+        $content = json_encode(['userId' => 1, 'itemId' => 5, 'count' => 3]);
+
+        $client->request(
+            method: 'POST',
+            uri: '/cartItem',
+            content: $content ?: null,
+            server: self::AUTH_HEADERS,
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+
+        $responseData = json_decode((string) $client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('errorMessage', $responseData);
+    }
 
     // --- remove() ---
 
@@ -225,7 +253,7 @@ class CartItemControllerTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $cartItemDTO = $this->buildCartItemDTO(cartItemId: 42, itemId: 5, count: 10);
+        $cartItemDTO = $this->buildCartItemDTO(cartItemId: 42, itemId: 5, count: 10, userId: 1);
 
         $mockCartManager = $this->createMock(CartManagerInterface::class);
         $mockCartManager

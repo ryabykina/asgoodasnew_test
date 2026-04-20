@@ -11,4 +11,6 @@ class CartItemDTO
     public int $itemId;
 
     public int $count;
+
+    public int $userId;
 }

@@ -9,6 +9,7 @@ use App\Entity\Cart\CartItem;
 use App\Service\Cart\CartManagerInterface;
 use App\Service\Cart\Exception\CartItemNotFoundException;
 use App\Service\Cart\Exception\ItemByUserExistsException;
+use App\Service\Cart\Exception\ItemsAmountLimitReachedException;
 use Doctrine\Common\DataFixtures\Executor\ORMExecutor;
 use Doctrine\Common\DataFixtures\Purger\ORMPurger;
 use Doctrine\ORM\EntityManagerInterface;
@@ -41,12 +42,11 @@ class CartManagerTest extends KernelTestCase
     public function testSaveCartItemSuccessfully(): void
     {
         // userId=10 / itemId=5 do not exist in the fixture → save must succeed
-        $cartDTO = $this->cartManager->saveCartItem(userId: 10, itemId: 5, count: 2);
+        $cartItemDTO = $this->cartManager->saveCartItem(userId: 10, itemId: 5, count: 2);
 
-        $this->assertSame(10, $cartDTO->userId);
-        $this->assertCount(1, $cartDTO->items);
-        $this->assertSame(5, $cartDTO->items[0]->itemId);
-        $this->assertSame(2, $cartDTO->items[0]->count);
+        $this->assertSame(10, $cartItemDTO->userId);
+        $this->assertSame(5, $cartItemDTO->itemId);
+        $this->assertSame(2, $cartItemDTO->count);
     }
 
     public function testSaveCartItemWhenItemIdExists(): void
@@ -55,6 +55,17 @@ class CartManagerTest extends KernelTestCase
         $this->expectException(ItemByUserExistsException::class);
 
         $this->cartManager->saveCartItem(userId: 2, itemId: 1, count: 5);
+    }
+
+    public function testSaveCartItemsLimitReached(): void
+    {
+        // services_test.yaml sets cart.total_amount=3; CartFixture gives userId=2 two items already.
+        // Adding a third item brings the count to the limit; a fourth must throw.
+        $this->cartManager->saveCartItem(userId: 2, itemId: 5, count: 1);
+
+        $this->expectException(ItemsAmountLimitReachedException::class);
+
+        $this->cartManager->saveCartItem(userId: 2, itemId: 6, count: 1);
     }
 
     // --- removeCartItem() ---
@@ -92,6 +103,7 @@ class CartManagerTest extends KernelTestCase
         $this->assertSame($existingItem->getId(), $cartItemDTO->id);
         $this->assertSame(1, $cartItemDTO->itemId);
         $this->assertSame(10, $cartItemDTO->count);
+        $this->assertSame(2, $cartItemDTO->userId);
     }
 
     public function testChangeCartItemWhenCartItemDoesntExist(): void

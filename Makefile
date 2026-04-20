@@ -73,7 +73,7 @@ down:
 	docker compose down --remove-orphans
 
 check-code-quality:
-	docker compose exec -i php sh -c "./vendor/bin/php-cs-fixer fix --allow-risky=yes && ./vendor/bin/phpstan analyse -l 6 src tests"
+	docker compose exec -i php sh -c "./vendor/bin/php-cs-fixer fix --allow-risky=yes && ./vendor/bin/phpstan analyse -l 7 src tests"
 
 run-tests:
 	docker compose exec -i php sh -c "php bin/console --env=test doctrine:migrations:migrate && php bin/console --env=test doctrine:fixtures:load && php bin/phpunit"

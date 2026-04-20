@@ -7,6 +7,7 @@ namespace App\Controller\Cart;
 use App\Service\Cart\CartManagerInterface;
 use App\Service\Cart\Exception\CartItemNotFoundException;
 use App\Service\Cart\Exception\ItemByUserExistsException;
+use App\Service\Cart\Exception\ItemsAmountLimitReachedException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,10 +50,9 @@ class CartItemController
             $cartDTO = $this->cartManager->saveCartItem((int) $userId, (int) $itemId, (int) $count);
 
             return new JsonResponse($cartDTO, Response::HTTP_CREATED);
-        } catch (ItemByUserExistsException $exception) {
+        } catch (ItemByUserExistsException|ItemsAmountLimitReachedException $exception) {
             return new JsonResponse(['errorMessage' => $exception->getMessage()], Response::HTTP_CONFLICT);
         }
-
     }
 
     #[Route('/cartItem/{cartItemId}', name: 'cart_item_remove', methods: ['DELETE'])]

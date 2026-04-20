@@ -9,7 +9,7 @@ use App\DTO\Cart\CartItemDTO;
 
 interface CartManagerInterface
 {
-    public function saveCartItem(int $userId, int $itemId, int $count): CartDTO;
+    public function saveCartItem(int $userId, int $itemId, int $count): CartItemDTO;
 
     public function removeCartItem(int $cartItemId): bool;
 

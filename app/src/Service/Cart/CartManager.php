@@ -10,18 +10,27 @@ use App\Entity\Cart\CartItem;
 use App\Repository\Cart\CartRepository;
 use App\Service\Cart\Exception\CartItemNotFoundException;
 use App\Service\Cart\Exception\ItemByUserExistsException;
+use App\Service\Cart\Exception\ItemsAmountLimitReachedException;
 
 class CartManager implements CartManagerInterface
 {
-    public function __construct(private CartRepository $cartRepository)
-    {
+    public function __construct(
+        private CartRepository $cartRepository,
+        private int $cartTotalAmount,
+    ) {
 
     }
 
-    public function saveCartItem(int $userId, int $itemId, int $count): CartDTO
+    public function saveCartItem(int $userId, int $itemId, int $count): CartItemDTO
     {
         if (null !== $this->cartRepository->findByItemIdAndUserId($itemId, $userId)) {
             throw new ItemByUserExistsException(sprintf('The itemId = %d for the userId = %d exists', $itemId, $userId));
+        }
+
+        $totalAmountOfItemsByUser = $this->cartRepository->getTotalAmountByUser($userId);
+
+        if ($totalAmountOfItemsByUser >= $this->cartTotalAmount) {
+            throw new ItemsAmountLimitReachedException(sprintf('You have already reached %d items in the cart', $this->cartTotalAmount));
         }
 
         $cart = new CartItem()
@@ -31,15 +40,13 @@ class CartManager implements CartManagerInterface
 
         $this->cartRepository->save($cart);
 
-        $cartDTO = new CartDTO();
-        $cartDTO->userId = $cart->getUserId();
         $cartItemDTO = new CartItemDTO();
         $cartItemDTO->id = $cart->getId();
         $cartItemDTO->itemId = $cart->getItemId();
         $cartItemDTO->count = $cart->getCount();
-        $cartDTO->items[] = $cartItemDTO;
+        $cartItemDTO->userId = $cart->getUserId();
 
-        return $cartDTO;
+        return $cartItemDTO;
     }
 
     public function removeCartItem(int $cartItemId): bool
@@ -68,6 +75,7 @@ class CartManager implements CartManagerInterface
         $cartItemDTO->id = $cart->getId();
         $cartItemDTO->itemId = $cart->getItemId();
         $cartItemDTO->count = $cart->getCount();
+        $cartItemDTO->userId = $cart->getUserId();
 
         return $cartItemDTO;
     }
